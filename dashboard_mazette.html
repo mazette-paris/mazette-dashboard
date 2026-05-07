@@ -1756,9 +1756,8 @@ function parseSheetDate(raw){
   return null;
 }
 
-// ── Sync données live depuis GSheet ─────────────────────────────────────────
-// URL publiée "Publier sur le web" (format e/2PACX-... requis pour CORS navigateur)
-const LIVE_PUB_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRpRzsA9ruWcramb508mj8-AdbxLozOnXksp7l23QpOVnUkAbfjwiZz1LiuQnhIguaZ085t2rOyokJQ/pub';
+// ── Sync données live via Google Apps Script (CORS-friendly) ─────────────────
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwxyEZG-ne2obvbadi-50ZhwmBmook3YPPPl6s1o9oHodIGijTezL63LYtOhuiIF088/exec';
 const LIVE_CA_GID   = '720316923';
 const LIVE_RESA_GID = '1788480900';
 const LIVE_CACHE_TTL = 60*60*1000; // 1h en ms
@@ -1802,17 +1801,15 @@ async function syncLiveData(){
 
   // ── CA ───────────────────────────────────────────────────────────────────
   try{
-    const url=`${LIVE_PUB_BASE}?output=csv&gid=${LIVE_CA_GID}`;
-    const resp=await fetch(url, {redirect:'follow'});
+    const resp=await fetch(`${APPS_SCRIPT_URL}?gid=${LIVE_CA_GID}`);
     if(!resp.ok) throw new Error('HTTP '+resp.status);
-    const csv=await resp.text();
+    const rows=await resp.json();
+    if(rows.error) throw new Error(rows.error);
     const ca={};
-    csv.split('\n').slice(1).forEach(line=>{
-      if(!line.trim()) return;
-      const cols=parseCSVLine(line);
-      if(cols.length<6) return;
-      const ds=parseSheetDate(cols[0]);
-      const raw=(cols[5]||'').replace(/[€\s\u00a0]/g,'').replace(',','.');
+    rows.forEach(row=>{
+      const vals=Object.values(row);
+      const ds=parseSheetDate(String(vals[0]||''));
+      const raw=String(vals[5]||'').replace(/[€\s\u00a0]/g,'').replace(',','.');
       const val=parseFloat(raw);
       if(ds&&!isNaN(val)&&val>0){ca[ds]=Math.round(val);caCount++;}
     });
@@ -1822,29 +1819,27 @@ async function syncLiveData(){
 
   // ── Résa ─────────────────────────────────────────────────────────────────
   try{
-    const url=`${LIVE_PUB_BASE}?output=csv&gid=${LIVE_RESA_GID}`;
-    const resp=await fetch(url, {redirect:'follow'});
+    const resp=await fetch(`${APPS_SCRIPT_URL}?gid=${LIVE_RESA_GID}`);
     if(!resp.ok) throw new Error('HTTP '+resp.status);
-    const csv=await resp.text();
+    const rows=await resp.json();
+    if(rows.error) throw new Error(rows.error);
     const resa={};
-    csv.split('\n').slice(1).forEach(line=>{
-      if(!line.trim()) return;
-      const cols=parseCSVLine(line);
-      if(cols.length<2) return;
-      const ds=parseSheetDate(cols[0]);
-      const val=parseInt((cols[1]||'').replace(/[^0-9]/g,''));
+    rows.forEach(row=>{
+      const vals=Object.values(row);
+      const ds=parseSheetDate(String(vals[0]||''));
+      const val=parseInt(String(vals[1]||'').replace(/[^0-9]/g,''));
       if(ds&&!isNaN(val)&&val>0){resa[ds]=val;resaCount++;}
     });
     localStorage.setItem('maz_live_resa',JSON.stringify(resa));
-    console.log('[syncLiveData] Résa: '+resaCount+' jours');
-  }catch(e){errors.push('Résa: '+e.message);console.error('[Résa]',e);}
+    console.log('[syncLiveData] R\u00e9sa: '+resaCount+' jours');
+  }catch(e){errors.push('R\u00e9sa: '+e.message);console.error('[R\u00e9sa]',e);}
 
   localStorage.setItem('maz_live_synced_at',new Date().toISOString());
   updateLiveStatusBar();
   renderPrevCards();
   renderPilotageJours();
-  if(btn){btn.disabled=false;btn.textContent='🔄 Sync données';}
-  if(errors.length) alert('Erreurs sync :\n'+errors.join('\n')+'\n\nVérifier que le GSheet est publié sur le Web (Fichier → Partager → Publier sur le Web).');
+  if(btn){btn.disabled=false;btn.textContent='\U0001f504 Sync donn\u00e9es';}
+  if(errors.length) alert('Erreurs sync :\n'+errors.join('\n'));
 }
 
 let prevFetchInProgress=false;
