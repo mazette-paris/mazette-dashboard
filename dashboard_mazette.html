@@ -224,7 +224,7 @@ footer{border-top:1px solid var(--border);padding:10px 22px;display:flex;align-i
 .prev-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:11px 12px;position:relative;min-width:0;}
 .prev-card.weekend{border-top:2px solid var(--blue);}
 .prev-card.semaine{border-top:2px solid var(--teal);}
-.prev-card.dimanche{border-top:2px solid var(--coral);}
+.prev-card.dimanche{border-top:2px solid var(--amber);}
 .prev-date-lbl{font-family:'DM Mono',monospace;font-size:9px;color:var(--text3);margin-bottom:2px;letter-spacing:.4px;}
 .prev-dow{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:2px;}
 .prev-type-badge{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.6px;margin-bottom:8px;}
@@ -1608,7 +1608,7 @@ async function fetchPrevMeteo(){
 function renderPrevCards(){
   const DOW_FR=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
   const MOIS_FR=['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'];
-  const TYPE_COLOR={semaine:'var(--teal)',weekend:'var(--blue)',dimanche:'var(--coral)'};
+  const TYPE_COLOR={semaine:'var(--teal)',weekend:'var(--blue)',dimanche:'var(--amber)'};
   const TYPE_LBL={semaine:'SEMAINE',weekend:'WEEK-END',dimanche:'DIMANCHE'};
 
   const {ratio:trend, n:trendN}=prevRecentTrend();
@@ -1628,10 +1628,13 @@ function renderPrevCards(){
 
   const today=new Date(); today.setHours(0,0,0,0);
 
-  // Build 14 days
+  // Semaines fixes lun→dim : partir du lundi de la semaine courante
+  const dow=today.getDay(); // 0=dim, 1=lun...
+  const diffToMon=dow===0?-6:1-dow;
+  const monday=new Date(today); monday.setDate(today.getDate()+diffToMon);
   const days=[];
   for(let i=0;i<14;i++){
-    const d=new Date(today); d.setDate(d.getDate()+i); days.push(d);
+    const d=new Date(monday); d.setDate(monday.getDate()+i); days.push(d);
   }
 
   [days.slice(0,7), days.slice(7,14)].forEach((row,ri)=>{
